@@ -1,5 +1,7 @@
 package com.wisely.ch9_2.batch;
 
+import java.io.Reader;
+
 import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
@@ -7,6 +9,7 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
@@ -21,6 +24,7 @@ import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.item.validator.Validator;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -28,23 +32,24 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import com.wisely.ch9_2.domain.Person;
 
-//@Configuration
+@Configuration
 @EnableBatchProcessing
-public class CsvBatchConfig {
+public class TriggerBatchConfig {
 
 	@Bean
-	public ItemReader<Person> reader() throws Exception {
-		FlatFileItemReader<Person> reader = new FlatFileItemReader<Person>(); //1、使用FlatFileItemReader读取文件
-		reader.setResource(new ClassPathResource("people.csv")); //2、使用FlatFileItemReader的setResource方法设置csv文件的路径
-	        reader.setLineMapper(new DefaultLineMapper<Person>() {{ //3、在此处对csv文件的数据和领域模型类做对应映射。
-	            setLineTokenizer(new DelimitedLineTokenizer() {{
-	                setNames(new String[] { "name","age", "nation" ,"address"});
-	            }});
-	            setFieldSetMapper(new BeanWrapperFieldSetMapper<Person>() {{
-	                setTargetType(Person.class);
-	            }});
-	        }});
-	        return reader;
+	@StepScope
+	public FlatFileItemReader<Person> reader(@Value("#{jobParameters['input.file.name']}") String pathToFile) throws Exception {
+		FlatFileItemReader<Person> reader = new FlatFileItemReader<Person>();	//1
+		reader.setResource(new ClassPathResource(pathToFile)); 	//2
+		reader.setLineMapper(new DefaultLineMapper<Person>() {{	//3
+			setLineTokenizer(new DelimitedLineTokenizer() {{
+				setNames(new String[] {"name", "age", "nation", "address"});
+			}});
+			setFieldSetMapper(new BeanWrapperFieldSetMapper<Person>() {{
+				setTargetType(Person.class);
+			}});
+		}}); 	
+		return reader;
 	}
 	
 	@Bean
